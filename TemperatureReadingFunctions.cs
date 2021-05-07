@@ -35,6 +35,9 @@ namespace MeatPi.Functions
         [JsonPropertyName("time")]
         public string Time { get; set; }
 
+        [JsonPropertyName("cook_start_time")]
+        public string CookStartTime { get; set; }
+
         [JsonPropertyName("chamber_target")]
         public double ChamberTarget { get; set; }
 
@@ -50,24 +53,43 @@ namespace MeatPi.Functions
         public const string TableName = "Reading";
 
         public ReadingTable() { }
-        public ReadingTable(string deviceId, string cookId) : base(deviceId, cookId) { }
+        public ReadingTable(string deviceId, string cookId, string time) : base(string.Join("|", deviceId, cookId), time) { }
 
-        public string DeviceId => PartitionKey;
-        public string CookId => RowKey;
+        public string DeviceId => PartitionKey.Split("|")[0];
+        public string CookId => PartitionKey.Split("|")[1];
+        public string Time => RowKey;
 
-        public string ReadingTime { get; set; }
         public double ChamberTarget { get; set; }
         public bool IsCookerOn { get; set; }
         public string Readings { get; set; }
 
         public static ReadingTable FromReading(CookReadingValue reading)
         {
-            return new ReadingTable(reading.DeviceId, reading.CookId)
+            return new ReadingTable(reading.DeviceId, reading.CookId, reading.Time)
             {
-                ReadingTime = reading.Time,
                 ChamberTarget = reading.ChamberTarget,
                 IsCookerOn = reading.IsCookerOn,
                 Readings = JsonSerializer.Serialize<List<ReadingValue>>(reading.Readings)
+            };
+        }
+    }
+
+    public class CookTable : TableEntity
+    {
+        public const string TableName = "Cook";
+
+        public CookTable() { }
+        public CookTable(string deviceId, string cookId) : base(deviceId, cookId) { }
+
+        public string StartTime { get; set; }
+        public string LastTime { get; set; }
+
+        public static CookTable FromReading(CookReadingValue reading)
+        {
+            return new CookTable(reading.DeviceId, reading.CookId)
+            {
+                StartTime = reading.CookStartTime,
+                LastTime = reading.Time
             };
         }
     }
@@ -88,8 +110,9 @@ namespace MeatPi.Functions
             log.LogInformation($"C# ServiceBus queue trigger function processed message: {readingsQueueItem}");
 
             var reading = JsonSerializer.Deserialize<CookReadingValue>(readingsQueueItem);
-            var table = ReadingTable.FromReading(reading);
-            await AzureTableHelper.InsertOrReplace<ReadingTable>(ReadingTable.TableName, table);
+
+            await AzureTableHelper.InsertOrReplace<CookTable>(CookTable.TableName, CookTable.FromReading(reading));
+            await AzureTableHelper.InsertOrReplace<ReadingTable>(ReadingTable.TableName, ReadingTable.FromReading(reading));
             await AzureQueueStorageHelper.QueueMessage(ReadingsQueue, reading);
         }
     }
