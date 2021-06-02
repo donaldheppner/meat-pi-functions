@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -94,19 +93,16 @@ namespace MeatPi.Functions
         }
     }
 
-
     public static class TemperatureReadingFunctions
     {
-        private static readonly CloudStorageAccount StorageAccount = CloudStorageAccount.Parse(Environment.GetEnvironmentVariable("AzureWebJobsStorage"));
-        private static readonly SortedSet<string> CreatedTables = new SortedSet<string>();
-        private const string ReadingsQueue = "readings";
-
         /// <summary>
         /// Is triggered when an event comes in via service bus; stores the data in a table and writes it to a queue for the web app to process
         /// </summary>
         [FunctionName("QueueReading")]
         public static async Task Run([ServiceBusTrigger("readings", Connection = "meatpi_SERVICEBUS")] string readingsQueueItem, ILogger log)
         {
+            const string ReadingsQueue = "readings";
+
             log.LogInformation($"C# ServiceBus queue trigger function processed message: {readingsQueueItem}");
 
             var reading = JsonSerializer.Deserialize<CookReadingValue>(readingsQueueItem);

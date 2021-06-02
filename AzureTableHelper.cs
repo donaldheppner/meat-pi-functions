@@ -10,6 +10,7 @@ namespace MeatPi.Functions
 {
     public static class AzureTableHelper
     {
+
         const string StorageConfiguration = "AzureWebJobsStorage";
         public const string PartitionKey = nameof(TableEntity.PartitionKey);
         public const string RowKey = nameof(TableEntity.RowKey);
@@ -38,7 +39,7 @@ namespace MeatPi.Functions
         };
 
         public static readonly string[] Operators = BuiltInOperators.Concat(StringOperators).ToArray();
-        
+
         private static readonly CloudStorageAccount StorageAccount = CloudStorageAccount.Parse(Environment.GetEnvironmentVariable(StorageConfiguration));
 
         private static readonly SortedSet<string> CreatedTables = new SortedSet<string>();
